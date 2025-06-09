@@ -20,8 +20,8 @@ struct Args {
     output: String,
 }
 
-const BYTES: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
+const BYTES: &[u8; 65] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+const PADDING_IDX: u32 = 64;
 fn main() {
     let args = Args::parse();
 
@@ -35,34 +35,37 @@ fn main() {
     };
 
     let indices = encode(bytes);
-    let len = indices.len();
-    for idx in indices {
-        print!("{}", BYTES[idx as usize] as char);
-    }
-    if len % 4 != 0 {
-        for _ in 0..(4 - (len % 4)) {
-            print!("=");
-        }
-    }
-    println!();
+    let chars: String = indices
+        .into_iter()
+        .flat_map(|n| n.to_be_bytes())
+        .map(|b| BYTES[b as usize] as char)
+        .collect();
+
+    println!("{}", chars);
 }
 
-fn encode(bytes: Vec<u8>) -> Vec<u8> {
-    let mut result: Vec<u8> = Vec::new();
+fn encode(bytes: Vec<u8>) -> Vec<u32> {
+    let mut result: Vec<u32> = Vec::new();
     for chunk in bytes.chunks(3) {
         let chunk_size = chunk.len();
         if chunk_size == 3 {
-            result.push(chunk[0] >> 2);
-            result.push((chunk[0] & 0x3) << 4 | ((chunk[1] & 0xF0) >> 4));
-            result.push((chunk[1] & 0x0F) << 2 | ((chunk[2] & 0xC0) >> 6));
-            result.push((chunk[2] << 2) >> 2);
+            let val = ((chunk[0] >> 2) as u32) << 24
+                | (((chunk[0] & 0x3) << 4 | ((chunk[1] & 0xF0) >> 4)) as u32) << 16
+                | (((chunk[1] & 0x0F) << 2 | ((chunk[2] & 0xC0) >> 6)) as u32) << 8
+                | ((chunk[2] << 2) >> 2) as u32;
+            result.push(val);
         } else if chunk_size == 2 {
-            result.push(chunk[0] >> 2);
-            result.push((chunk[0] & 0x3) << 4 | ((chunk[1] & 0xF0) >> 4));
-            result.push((chunk[1] & 0x0F) << 2);
+            let val = ((chunk[0] >> 2) as u32) << 24
+                | (((chunk[0] & 0x3) << 4 | ((chunk[1] & 0xF0) >> 4)) as u32) << 16
+                | (((chunk[1] & 0x0F) << 2) as u32) << 8
+                | PADDING_IDX;
+            result.push(val);
         } else {
-            result.push(chunk[0] >> 2);
-            result.push((chunk[0] & 0x3) << 4);
+            let val = ((chunk[0] >> 2) as u32) << 24
+                | (((chunk[0] & 0x3) << 4) as u32) << 16
+                | PADDING_IDX << 8
+                | PADDING_IDX;
+            result.push(val);
         }
     }
     result
