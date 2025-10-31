@@ -1,4 +1,6 @@
+use std::fs::write;
 use clap::{ArgGroup, Parser};
+use libr::encode_to_bytes;
 
 #[derive(Parser, Debug)]
 #[command(group(
@@ -17,11 +19,10 @@ struct Args {
 
     /// Output file
     #[arg(short, long)]
-    output: String,
+    output: Option<String>,
 }
 
 const BYTES: &[u8; 65] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-const PADDING_IDX: u32 = 64;
 fn main() {
     let args = Args::parse();
 
@@ -34,39 +35,17 @@ fn main() {
         unreachable!("clap ensures either `file` or `raw_string` is present");
     };
 
-    let indices = encode(bytes);
+    let indices = encode_to_bytes(bytes);
     let chars: String = indices
         .into_iter()
         .flat_map(|n| n.to_be_bytes())
         .map(|b| BYTES[b as usize] as char)
         .collect();
 
-    println!("{}", chars);
+    if let Some(output) = args.output {
+        write(output, chars.as_bytes()).expect("Failed to write output");
+    } else {
+        println!("{}", chars);
+    }
 }
 
-fn encode(bytes: Vec<u8>) -> Vec<u32> {
-    let mut result: Vec<u32> = Vec::new();
-    for chunk in bytes.chunks(3) {
-        let chunk_size = chunk.len();
-        if chunk_size == 3 {
-            let val = ((chunk[0] >> 2) as u32) << 24
-                | (((chunk[0] & 0x3) << 4 | ((chunk[1] & 0xF0) >> 4)) as u32) << 16
-                | (((chunk[1] & 0x0F) << 2 | ((chunk[2] & 0xC0) >> 6)) as u32) << 8
-                | ((chunk[2] << 2) >> 2) as u32;
-            result.push(val);
-        } else if chunk_size == 2 {
-            let val = ((chunk[0] >> 2) as u32) << 24
-                | (((chunk[0] & 0x3) << 4 | ((chunk[1] & 0xF0) >> 4)) as u32) << 16
-                | (((chunk[1] & 0x0F) << 2) as u32) << 8
-                | PADDING_IDX;
-            result.push(val);
-        } else {
-            let val = ((chunk[0] >> 2) as u32) << 24
-                | (((chunk[0] & 0x3) << 4) as u32) << 16
-                | PADDING_IDX << 8
-                | PADDING_IDX;
-            result.push(val);
-        }
-    }
-    result
-}
