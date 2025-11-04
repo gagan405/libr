@@ -40,6 +40,7 @@ pub fn encode_to_string(bytes: Vec<u8>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
     use base64::{engine::general_purpose, Engine as _};
 
     fn assert_base64(input: &str) {
@@ -117,5 +118,15 @@ mod tests {
 
         let result = encode_to_string(vec![0x66, 0x6F, 0x6F]);
         assert_eq!(result, "Zm9v");
+    }
+
+    proptest! {
+        #[test]
+        fn test_random_string(s in ".*") {
+            println!("Testing with s = {:?}", s);
+            let expected = general_purpose::STANDARD.encode(s.as_bytes());
+            let actual = encode_to_string(s.as_bytes().to_vec());
+            prop_assert_eq!(expected, actual);
+        }
     }
 }
