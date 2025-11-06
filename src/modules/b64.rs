@@ -29,6 +29,22 @@ pub fn encode_to_bytes(bytes: Vec<u8>) -> Vec<u32> {
     result
 }
 
+pub fn decode_to_bytes(bytes: Vec<u32>) -> Vec<u8> {
+    let mut result: Vec<u8> = Vec::new();
+    for val in bytes {
+        let bytes = val.to_be_bytes();
+
+        let first = bytes[0] << 2 | bytes[1] >> 4;
+        let second = bytes[1] << 4 | bytes[2] >> 2;
+        let third = bytes[2] << 6 | bytes[3];
+
+        result.push(first);
+        if second as u32 != PADDING_IDX { result.push(second); }
+        if third as u32 != PADDING_IDX { result.push(third); }
+    }
+    result
+}
+
 pub fn encode_to_string(bytes: Vec<u8>) -> String {
     encode_to_bytes(bytes)
         .into_iter()
@@ -127,6 +143,15 @@ mod tests {
             let expected = general_purpose::STANDARD.encode(s.as_bytes());
             let actual = encode_to_string(s.as_bytes().to_vec());
             prop_assert_eq!(expected, actual);
+        }
+
+        #[test]
+        fn test_random_string_decode(s in ".*") {
+            println!("Testing with s = {:?}", s);
+            let expected = general_purpose::STANDARD.encode(s.as_bytes());
+            let actual = encode_to_string(s.as_bytes().to_vec());
+            prop_assert_eq!(expected, actual);
+            let decoded = decode_to_bytes(actual);
         }
     }
 }
