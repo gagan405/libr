@@ -1,6 +1,6 @@
 use std::fs::write;
 use clap::{ArgGroup, Parser};
-use libr::encode_to_bytes;
+use libgb::encode_to_bytes;
 
 #[derive(Parser, Debug)]
 #[command(group(

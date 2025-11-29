@@ -1,7 +1,10 @@
 [package]
-name = "libr"
+name = "libgb"
 version = "0.1.0"
 edition = "2024"
+description = "Collection of utility algorithms"
+license = "MIT"
+repository = "https://github.com/gagan405/libr"
 
 [dependencies]
 clap = { version = "4.5.39", features = ["derive"] }
